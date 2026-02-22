@@ -229,6 +229,7 @@ async function processSplashScreen(projectDir, appConfig) {
  * Update MainActivity.kt with configuration
  */
 async function updateMainActivity(projectDir, appConfig, features, isPremium) {
+  // MainActivity is directly in kotlin/ folder, not in package subdirectory
   const mainActivityPath = path.join(projectDir, 'app/src/main/kotlin/MainActivity.kt');
   let activity = await fs.readFile(mainActivityPath, 'utf8');
 
