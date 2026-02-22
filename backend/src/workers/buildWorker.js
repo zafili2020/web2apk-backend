@@ -3,6 +3,7 @@ const Build = require('../models/Build');
 const logger = require('../utils/logger');
 const { buildAPK } = require('../services/buildService');
 const mongoose = require('mongoose');
+const http = require('http');
 
 // Connect to MongoDB before processing jobs
 const connectDB = async () => {
@@ -17,6 +18,27 @@ const connectDB = async () => {
 
 // Initialize database connection
 connectDB();
+
+// Create simple health check server for DigitalOcean
+const healthCheckServer = http.createServer((req, res) => {
+  if (req.url === '/health' || req.url === '/') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ 
+      status: 'healthy', 
+      service: 'web2apk-worker',
+      uptime: process.uptime(),
+      timestamp: new Date().toISOString()
+    }));
+  } else {
+    res.writeHead(404);
+    res.end();
+  }
+});
+
+const PORT = process.env.PORT || 5000;
+healthCheckServer.listen(PORT, '0.0.0.0', () => {
+  logger.info(`Worker health check server listening on port ${PORT}`);
+});
 
 /**
  * Process build job
