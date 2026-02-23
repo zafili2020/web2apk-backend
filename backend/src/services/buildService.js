@@ -233,8 +233,8 @@ async function updateMainActivity(projectDir, appConfig, features, isPremium) {
   const mainActivityPath = path.join(projectDir, 'app/src/main/kotlin/MainActivity.kt');
   let activity = await fs.readFile(mainActivityPath, 'utf8');
 
-  // Update package name
-  activity = activity.replace(/^package .+/, `package ${appConfig.packageName}`);
+  // DON'T update package name - keep it as com.web2apk.template to match namespace in build.gradle
+  // The applicationId in build.gradle is what identifies the app, not the package name
 
   // Update website URL
   activity = activity.replace(/WEBSITE_URL = ".*"/, `WEBSITE_URL = "${appConfig.websiteUrl}"`);
