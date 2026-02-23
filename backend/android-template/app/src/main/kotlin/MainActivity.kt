@@ -179,8 +179,9 @@ class MainActivity : AppCompatActivity() {
                     try {
                         startActivityForResult(intent, FILE_CHOOSER_REQUEST_CODE)
                     } catch (e: Exception) {
-                    fileUploadCallback = null
-                    return false
+                        fileUploadCallback = null
+                        return false
+                    }
                 }
                 return true
             }
