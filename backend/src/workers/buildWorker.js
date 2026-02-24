@@ -19,24 +19,90 @@ const connectDB = async () => {
 // Initialize database connection
 connectDB();
 
-// Create simple health check server for DigitalOcean
-const healthCheckServer = http.createServer((req, res) => {
-  if (req.url === '/health' || req.url === '/') {
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ 
-      status: 'healthy', 
-      service: 'web2apk-worker',
-      uptime: process.uptime(),
-      timestamp: new Date().toISOString()
-    }));
-  } else {
-    res.writeHead(404);
-    res.end();
+// Create simple health check server for DigitalOcean with download endpoint
+const express = require('express');
+const fs = require('fs');
+const path = require('path');
+const app = express();
+
+// Enable CORS for frontend
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  next();
+});
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'healthy', 
+    service: 'web2apk-worker',
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString()
+  });
+});
+
+app.get('/', (req, res) => {
+  res.json({ 
+    status: 'healthy', 
+    service: 'web2apk-worker',
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Download endpoint
+app.get('/download/:buildId', async (req, res) => {
+  try {
+    const { buildId } = req.params;
+    
+    // Find build in database
+    const build = await Build.findOne({ buildId });
+    
+    if (!build) {
+      return res.status(404).json({ success: false, message: 'Build not found' });
+    }
+
+    if (build.status !== 'completed') {
+      return res.status(400).json({ success: false, message: 'Build is not completed yet' });
+    }
+
+    if (!build.output.apkPath) {
+      return res.status(404).json({ success: false, message: 'APK file path not found' });
+    }
+
+    // Check if file exists
+    if (!fs.existsSync(build.output.apkPath)) {
+      logger.error(`APK file not found: ${build.output.apkPath}`);
+      return res.status(404).json({ success: false, message: 'APK file not found on server' });
+    }
+
+    logger.info(`Downloading APK: ${buildId} - ${build.appConfig.appName}`);
+
+    // Set headers
+    const fileName = `${build.appConfig.appName.replace(/[^a-z0-9]/gi, '_')}.apk`;
+    res.setHeader('Content-Type', 'application/vnd.android.package-archive');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+
+    // Stream the file
+    const fileStream = fs.createReadStream(build.output.apkPath);
+    fileStream.pipe(res);
+
+    fileStream.on('error', (error) => {
+      logger.error(`File stream error: ${error.message}`);
+      if (!res.headersSent) {
+        res.status(500).json({ success: false, message: 'Error streaming file' });
+      }
+    });
+
+  } catch (error) {
+    logger.error(`Download error: ${error.message}`);
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
 const PORT = process.env.PORT || 5000;
-healthCheckServer.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, '0.0.0.0', () => {
   logger.info(`Worker health check server listening on port ${PORT}`);
 });
 
