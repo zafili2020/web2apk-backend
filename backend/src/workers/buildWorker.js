@@ -101,6 +101,70 @@ app.get('/download/:buildId', async (req, res) => {
   }
 });
 
+// Debug endpoint to check file storage
+app.get('/debug/files', async (req, res) => {
+  try {
+    const buildsDir = process.env.BUILD_OUTPUT_DIR || '/app/builds';
+    
+    // Check if directory exists
+    if (!fs.existsSync(buildsDir)) {
+      return res.json({
+        exists: false,
+        message: 'Builds directory does not exist',
+        checkedPath: buildsDir
+      });
+    }
+
+    // List all files in builds directory
+    const files = fs.readdirSync(buildsDir);
+    const fileDetails = [];
+
+    for (const file of files) {
+      const filePath = path.join(buildsDir, file);
+      const stats = fs.statSync(filePath);
+      
+      if (stats.isDirectory()) {
+        // List APK files in build subdirectories
+        try {
+          const subFiles = fs.readdirSync(filePath);
+          for (const subFile of subFiles) {
+            if (subFile.endsWith('.apk')) {
+              const apkPath = path.join(filePath, subFile);
+              const apkStats = fs.statSync(apkPath);
+              fileDetails.push({
+                buildId: file,
+                fileName: subFile,
+                fullPath: apkPath,
+                sizeMB: (apkStats.size / (1024 * 1024)).toFixed(2),
+                sizeBytes: apkStats.size,
+                created: apkStats.birthtime,
+                modified: apkStats.mtime
+              });
+            }
+          }
+        } catch (err) {
+          // Skip if can't read subdirectory
+        }
+      }
+    }
+
+    res.json({
+      success: true,
+      exists: true,
+      location: buildsDir,
+      totalBuildDirs: files.length,
+      totalAPKs: fileDetails.length,
+      apkFiles: fileDetails,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, '0.0.0.0', () => {
   logger.info(`Worker health check server listening on port ${PORT}`);
