@@ -121,6 +121,10 @@ const buildSchema = new mongoose.Schema({
     qrCode: {
       type: String,
       default: null
+    },
+    cloudinaryPublicId: {
+      type: String,
+      default: null
     }
   },
   // Build Metadata
@@ -256,13 +260,14 @@ buildSchema.methods.updateProgress = async function(progress, step) {
 };
 
 // Method to mark as completed
-buildSchema.methods.markCompleted = async function(apkPath, apkSize, downloadUrl) {
+buildSchema.methods.markCompleted = async function(apkPath, apkSize, downloadUrl, cloudinaryPublicId = null) {
   this.status = 'completed';
   this.progress = 100;
   this.currentStep = 'Build completed successfully';
   this.output.apkPath = apkPath;
   this.output.apkSize = apkSize;
   this.output.downloadUrl = downloadUrl;
+  this.output.cloudinaryPublicId = cloudinaryPublicId;
   this.buildTime.completedAt = new Date();
   this.buildTime.duration = this.buildTime.completedAt - this.buildTime.startedAt;
   

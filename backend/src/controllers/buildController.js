@@ -210,11 +210,20 @@ const downloadAPK = asyncHandler(async (req, res, next) => {
     return next(new AppError('Build has expired', 410));
   }
 
+  // Check if we have a Cloudinary URL (starts with https://)
+  if (build.output.apkPath && build.output.apkPath.startsWith('https://')) {
+    // APK is on Cloudinary - redirect to the URL
+    logger.info(`Redirecting to Cloudinary download: ${buildId}`);
+    await build.incrementDownloadCount();
+    return res.redirect(build.output.apkPath);
+  }
+
+  // Fallback: Local file (for backwards compatibility or if Cloudinary fails)
   if (!build.output.apkPath) {
     return next(new AppError('APK file not found', 404));
   }
 
-  // Check if file exists
+  // Check if local file exists
   try {
     await fs.access(build.output.apkPath);
   } catch (error) {
@@ -226,7 +235,7 @@ const downloadAPK = asyncHandler(async (req, res, next) => {
 
   logger.info(`APK downloaded: ${buildId} by user: ${req.user.email}`);
 
-  // Send file
+  // Send local file
   res.download(build.output.apkPath, `${build.appConfig.appName}.apk`, (err) => {
     if (err) {
       logger.error(`Download error: ${err.message}`);

@@ -211,10 +211,17 @@ buildQueue.process(async (job) => {
     await build.markCompleted(
       result.apkPath,
       result.apkSize,
-      result.downloadUrl
+      result.downloadUrl,
+      result.cloudinaryPublicId
     );
 
     logger.info(`Build completed: ${buildId}`);
+    logger.info(`APK Path: ${result.apkPath}`);
+    logger.info(`APK Size: ${(result.apkSize / (1024 * 1024)).toFixed(2)} MB`);
+    logger.info(`Download URL: ${result.downloadUrl}`);
+    if (result.cloudinaryPublicId) {
+      logger.info(`Cloudinary Public ID: ${result.cloudinaryPublicId}`);
+    }
 
     return {
       success: true,

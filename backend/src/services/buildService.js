@@ -56,8 +56,8 @@ async function buildAPK({ buildId, appConfig, features, isPremium, updateProgres
     await updateProgress(90, 'Signing APK...');
     const signedApkPath = await signAPK(apkPath, buildId);
 
-    // Step 11: Move to output directory
-    await updateProgress(95, 'Finalizing...');
+    // Step 11: Move to output directory temporarily
+    await updateProgress(93, 'Finalizing...');
     const finalApkPath = path.join(BUILD_OUTPUT_DIR, `${buildId}.apk`);
     await fs.mkdir(BUILD_OUTPUT_DIR, { recursive: true });
     await fs.copyFile(signedApkPath, finalApkPath);
@@ -66,16 +66,49 @@ async function buildAPK({ buildId, appConfig, features, isPremium, updateProgres
     const stats = await fs.stat(finalApkPath);
     const apkSize = stats.size;
 
+    // Step 12: Upload to Cloudinary
+    await updateProgress(95, 'Uploading to cloud storage...');
+    const cloudinaryService = require('./cloudinaryService');
+    
+    let cloudinaryUrl = null;
+    let cloudinaryPublicId = null;
+
+    if (cloudinaryService.isConfigured()) {
+      try {
+        const uploadResult = await cloudinaryService.uploadAPK(finalApkPath, buildId);
+        cloudinaryUrl = uploadResult.url;
+        cloudinaryPublicId = uploadResult.publicId;
+        logger.info(`APK uploaded to Cloudinary: ${cloudinaryUrl}`);
+      } catch (uploadError) {
+        logger.error(`Cloudinary upload failed: ${uploadError.message}`);
+        // Continue without Cloudinary - file will be stored locally
+      }
+    } else {
+      logger.warn('Cloudinary not configured - APK will be stored locally only');
+    }
+
     // Cleanup temp directory
     await fs.rm(projectDir, { recursive: true, force: true });
 
+    // If Cloudinary upload succeeded, delete local file
+    if (cloudinaryUrl) {
+      try {
+        await fs.unlink(finalApkPath);
+        logger.info('Local APK file deleted after Cloudinary upload');
+      } catch (err) {
+        logger.warn(`Failed to delete local APK: ${err.message}`);
+      }
+    }
+
     // Generate download URL
-    const downloadUrl = `/downloads/${buildId}.apk`;
+    const downloadUrl = cloudinaryUrl || `/downloads/${buildId}.apk`;
+    const storedApkPath = cloudinaryUrl || finalApkPath;
 
     return {
-      apkPath: finalApkPath,
+      apkPath: storedApkPath,
       apkSize,
-      downloadUrl
+      downloadUrl,
+      cloudinaryPublicId
     };
 
   } catch (error) {
