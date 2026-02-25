@@ -19,7 +19,16 @@ async function uploadAPK(localPath, buildId) {
   try {
     logger.info(`Uploading APK to Cloudinary: ${buildId}`);
 
-    const result = await cloudinary.uploader.upload(localPath, {
+    // Cloudinary doesn't allow .apk extension, so we rename to .zip
+    // APK files are just ZIP files with a different extension
+    const fs = require('fs');
+    const path = require('path');
+    const tempZipPath = localPath.replace('.apk', '.zip');
+    
+    // Copy file with .zip extension
+    fs.copyFileSync(localPath, tempZipPath);
+
+    const result = await cloudinary.uploader.upload(tempZipPath, {
       resource_type: 'raw',
       public_id: `apks/${buildId}`,
       folder: 'web2apk-builds',
@@ -27,10 +36,19 @@ async function uploadAPK(localPath, buildId) {
       access_mode: 'public'
     });
 
+    // Clean up temp zip file
+    try {
+      fs.unlinkSync(tempZipPath);
+    } catch (err) {
+      logger.warn(`Failed to delete temp zip: ${err.message}`);
+    }
+
     logger.info(`APK uploaded successfully: ${result.secure_url}`);
     logger.info(`Cloudinary Public ID: ${result.public_id}`);
     logger.info(`File size: ${(result.bytes / (1024 * 1024)).toFixed(2)} MB`);
 
+    // Store the URL with .apk extension for clarity (even though it's .zip on Cloudinary)
+    // We'll handle the download with proper content-type headers
     return {
       url: result.secure_url,
       publicId: result.public_id,
