@@ -213,33 +213,13 @@ const downloadAPK = asyncHandler(async (req, res, next) => {
   // Increment download count
   await build.incrementDownloadCount();
 
+  logger.info(`APK download requested: ${buildId} by user: ${req.user.email}`);
+
   // Check if we have a Cloudinary URL (starts with https://)
   if (build.output.apkPath && build.output.apkPath.startsWith('https://')) {
-    // APK is on Cloudinary - create a proxy download with proper headers
-    logger.info(`Proxying Cloudinary download: ${buildId}`);
-    
-    const axios = require('axios');
-    const fileName = `${build.appConfig.appName.replace(/[^a-z0-9]/gi, '_')}.apk`;
-    
-    try {
-      // Fetch from Cloudinary
-      const response = await axios.get(build.output.apkPath, {
-        responseType: 'stream'
-      });
-
-      // Set proper APK headers
-      res.setHeader('Content-Type', 'application/vnd.android.package-archive');
-      res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-      res.setHeader('Content-Length', response.headers['content-length']);
-
-      // Pipe the stream to response
-      response.data.pipe(res);
-    } catch (error) {
-      logger.error(`Cloudinary download proxy error: ${error.message}`);
-      return next(new AppError('Error downloading file from cloud storage', 500));
-    }
-    
-    return;
+    // APK is on Cloudinary - redirect directly
+    logger.info(`Redirecting to Cloudinary: ${build.output.apkPath}`);
+    return res.redirect(build.output.apkPath);
   }
 
   // Fallback: Local file (for backwards compatibility or if Cloudinary fails)
@@ -254,7 +234,7 @@ const downloadAPK = asyncHandler(async (req, res, next) => {
     return next(new AppError('APK file not found on server', 404));
   }
 
-  logger.info(`APK downloaded: ${buildId} by user: ${req.user.email}`);
+  logger.info(`Serving local APK: ${buildId}`);
 
   // Send local file
   res.download(build.output.apkPath, `${build.appConfig.appName}.apk`, (err) => {

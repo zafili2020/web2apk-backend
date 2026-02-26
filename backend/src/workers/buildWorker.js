@@ -222,14 +222,22 @@ buildQueue.process(async (job) => {
     if (result.cloudinaryPublicId) {
       logger.info(`Cloudinary Public ID: ${result.cloudinaryPublicId}`);
     }
+    logger.info(`Database updated successfully for build: ${buildId}`);
 
-    return {
-      success: true,
-      buildId,
-      apkPath: result.apkPath,
-      apkSize: result.apkSize,
-      downloadUrl: result.downloadUrl
-    };
+    // Return success - even if job stalls after this, data is already saved!
+    try {
+      return {
+        success: true,
+        buildId,
+        apkPath: result.apkPath,
+        apkSize: result.apkSize,
+        downloadUrl: result.downloadUrl
+      };
+    } catch (returnError) {
+      // Log but don't fail - data is already in database
+      logger.warn(`Job return error (data already saved): ${returnError.message}`);
+      return { success: true, buildId };
+    }
 
   } catch (error) {
     logger.error(`Build failed: ${buildId} - ${error.message}`);
