@@ -170,7 +170,13 @@ const getBuildStatus = asyncHandler(async (req, res, next) => {
       currentStep: build.currentStep,
       appName: build.appConfig.appName,
       packageName: build.appConfig.packageName,
-      downloadUrl: build.output.downloadUrl,
+      output: {
+        downloadUrl: build.output.downloadUrl,
+        apkPath: build.output.apkPath,
+        apkSize: build.output.apkSize,
+        cloudinaryPublicId: build.output.cloudinaryPublicId
+      },
+      downloadUrl: build.output.downloadUrl, // Keep for backwards compatibility
       apkSize: build.output.apkSize,
       apkSizeFormatted: build.apkSizeFormatted,
       duration: build.buildTime.duration,
