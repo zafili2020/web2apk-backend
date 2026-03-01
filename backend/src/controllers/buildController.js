@@ -63,16 +63,68 @@ const createBuild = asyncHandler(async (req, res, next) => {
     logger.error(`Failed to create directories: ${error.message}`);
   }
 
-  // Handle file uploads
-  let appIconPath = null;
-  let splashImagePath = null;
+  // Handle file uploads - Upload to Cloudinary for cross-server access
+  let appIconUrl = null;
+  let splashImageUrl = null;
 
   if (req.files) {
+    const cloudinary = require('cloudinary').v2;
+    
+    // Upload app icon to Cloudinary
     if (req.files.appIcon) {
-      appIconPath = req.files.appIcon[0].path;
+      try {
+        logger.info(`Uploading app icon to Cloudinary: ${req.files.appIcon[0].filename}`);
+        
+        const result = await cloudinary.uploader.upload(req.files.appIcon[0].path, {
+          folder: 'web2apk-app-icons',
+          resource_type: 'image',
+          transformation: [
+            { width: 512, height: 512, crop: 'fill', quality: 'auto' }
+          ],
+          format: 'png'
+        });
+        
+        appIconUrl = result.secure_url;
+        logger.info(`App icon uploaded: ${appIconUrl}`);
+        
+        // Delete local file after upload
+        try {
+          await fs.unlink(req.files.appIcon[0].path);
+        } catch (err) {
+          logger.warn(`Failed to delete local app icon: ${err.message}`);
+        }
+      } catch (error) {
+        logger.error(`Failed to upload app icon to Cloudinary: ${error.message}`);
+        return next(new AppError('Failed to upload app icon. Please try again.', 500));
+      }
     }
+    
+    // Upload splash image to Cloudinary
     if (req.files.splashImage) {
-      splashImagePath = req.files.splashImage[0].path;
+      try {
+        logger.info(`Uploading splash image to Cloudinary: ${req.files.splashImage[0].filename}`);
+        
+        const result = await cloudinary.uploader.upload(req.files.splashImage[0].path, {
+          folder: 'web2apk-splash-images',
+          resource_type: 'image',
+          transformation: [
+            { width: 1080, height: 1920, crop: 'fit', quality: 'auto' }
+          ]
+        });
+        
+        splashImageUrl = result.secure_url;
+        logger.info(`Splash image uploaded: ${splashImageUrl}`);
+        
+        // Delete local file after upload
+        try {
+          await fs.unlink(req.files.splashImage[0].path);
+        } catch (err) {
+          logger.warn(`Failed to delete local splash image: ${err.message}`);
+        }
+      } catch (error) {
+        logger.error(`Failed to upload splash image to Cloudinary: ${error.message}`);
+        return next(new AppError('Failed to upload splash image. Please try again.', 500));
+      }
     }
   }
 
@@ -85,8 +137,8 @@ const createBuild = asyncHandler(async (req, res, next) => {
       appName,
       packageName: finalPackageName,
       splashBackground: splashBackground || '#FFFFFF',
-      splashImage: splashImagePath,
-      appIcon: appIconPath
+      splashImage: splashImageUrl,  // Cloudinary URL instead of local path
+      appIcon: appIconUrl            // Cloudinary URL instead of local path
     },
     features: {
       pullToRefresh: features?.pullToRefresh ?? true,

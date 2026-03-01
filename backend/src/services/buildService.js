@@ -215,6 +215,30 @@ async function processAppIcon(projectDir, iconPath) {
     return;
   }
 
+  const axios = require('axios');
+  let imageBuffer;
+
+  // Check if iconPath is a URL (Cloudinary) or local path
+  if (iconPath.startsWith('http://') || iconPath.startsWith('https://')) {
+    // Download from Cloudinary
+    logger.info(`Downloading app icon from Cloudinary: ${iconPath}`);
+    
+    try {
+      const response = await axios.get(iconPath, {
+        responseType: 'arraybuffer'
+      });
+      imageBuffer = Buffer.from(response.data);
+      logger.info('App icon downloaded successfully');
+    } catch (error) {
+      logger.error(`Failed to download app icon: ${error.message}`);
+      throw new Error(`Failed to download app icon from ${iconPath}: ${error.message}`);
+    }
+  } else {
+    // Local file path (backwards compatibility)
+    logger.warn(`Using local icon path (deprecated): ${iconPath}`);
+    imageBuffer = iconPath; // sharp can handle file paths directly
+  }
+
   const iconSizes = {
     'mipmap-mdpi': 48,
     'mipmap-hdpi': 72,
@@ -225,11 +249,22 @@ async function processAppIcon(projectDir, iconPath) {
 
   for (const [folder, size] of Object.entries(iconSizes)) {
     const outputPath = path.join(projectDir, `app/src/main/res/${folder}/ic_launcher.png`);
-    await sharp(iconPath)
-      .resize(size, size)
-      .png()
-      .toFile(outputPath);
+    
+    // Use buffer if we downloaded from URL, otherwise use path
+    if (Buffer.isBuffer(imageBuffer)) {
+      await sharp(imageBuffer)
+        .resize(size, size)
+        .png()
+        .toFile(outputPath);
+    } else {
+      await sharp(imageBuffer)
+        .resize(size, size)
+        .png()
+        .toFile(outputPath);
+    }
   }
+  
+  logger.info('App icon processed for all resolutions');
 }
 
 /**
@@ -250,11 +285,45 @@ async function processSplashScreen(projectDir, appConfig) {
 
   // If splash image provided, process it
   if (appConfig.splashImage) {
+    const axios = require('axios');
+    let imageBuffer;
+
+    // Check if splashImage is a URL (Cloudinary) or local path
+    if (appConfig.splashImage.startsWith('http://') || appConfig.splashImage.startsWith('https://')) {
+      // Download from Cloudinary
+      logger.info(`Downloading splash image from Cloudinary: ${appConfig.splashImage}`);
+      
+      try {
+        const response = await axios.get(appConfig.splashImage, {
+          responseType: 'arraybuffer'
+        });
+        imageBuffer = Buffer.from(response.data);
+        logger.info('Splash image downloaded successfully');
+      } catch (error) {
+        logger.error(`Failed to download splash image: ${error.message}`);
+        throw new Error(`Failed to download splash image: ${error.message}`);
+      }
+    } else {
+      // Local file path (backwards compatibility)
+      logger.warn(`Using local splash image path (deprecated): ${appConfig.splashImage}`);
+      imageBuffer = appConfig.splashImage;
+    }
+
     const splashPath = path.join(projectDir, 'app/src/main/res/drawable/splash_logo.png');
-    await sharp(appConfig.splashImage)
-      .resize(512, 512, { fit: 'inside' })
-      .png()
-      .toFile(splashPath);
+    
+    if (Buffer.isBuffer(imageBuffer)) {
+      await sharp(imageBuffer)
+        .resize(512, 512, { fit: 'inside' })
+        .png()
+        .toFile(splashPath);
+    } else {
+      await sharp(imageBuffer)
+        .resize(512, 512, { fit: 'inside' })
+        .png()
+        .toFile(splashPath);
+    }
+    
+    logger.info('Splash image processed');
   }
 }
 
