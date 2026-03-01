@@ -5,6 +5,14 @@ const { asyncHandler, AppError } = require('../middleware/errorHandler');
 const logger = require('../utils/logger');
 const path = require('path');
 const fs = require('fs').promises;
+const cloudinary = require('cloudinary').v2;
+
+// Configure Cloudinary (uses environment variables)
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
 
 /**
  * @desc    Create new build
@@ -68,8 +76,6 @@ const createBuild = asyncHandler(async (req, res, next) => {
   let splashImageUrl = null;
 
   if (req.files) {
-    const cloudinary = require('cloudinary').v2;
-    
     // Upload app icon to Cloudinary
     if (req.files.appIcon) {
       try {
