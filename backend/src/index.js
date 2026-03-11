@@ -15,7 +15,6 @@ const buildRoutes = require('./routes/buildRoutes');
 const userRoutes = require('./routes/userRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const healthRoutes = require('./routes/healthRoutes');
-const queueRoutes = require('./routes/queueRoutes');
 
 // Initialize Express app
 const app = express();
@@ -61,11 +60,6 @@ app.use('/downloads', express.static('builds', {
     }
   }
 }));
-
-//Add Bull Board for queue monitoring - Queue Status with authentication
-const { protect, adminOnly } = require('./middleware/auth');
-app.use('/', protect, adminOnly, queueRoutes);
-
 
 // API Routes
 app.use('/api/health', healthRoutes);
