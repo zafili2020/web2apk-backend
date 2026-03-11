@@ -15,6 +15,7 @@ const buildRoutes = require('./routes/buildRoutes');
 const userRoutes = require('./routes/userRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const healthRoutes = require('./routes/healthRoutes');
+const bullBoardRoutes = require('./routes/bullBoardRoutes');
 
 // Initialize Express app
 const app = express();
@@ -67,6 +68,9 @@ app.use('/api/auth', authRoutes);
 app.use('/api/builds', buildRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/payments', paymentRoutes);
+
+// Bull Board - Queue Monitoring Dashboard
+app.use('/admin/queues', bullBoardRoutes);
 
 // Welcome route
 app.get('/', (req, res) => {

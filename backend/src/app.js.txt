@@ -1,6 +1,0 @@
-
-const queueRoutes = require('./routes/queueRoutes');
-
-//Add Bull Board for queue monitoring - Queue Status with authentication
-const { protect, adminOnly } = require('./middleware/auth');
-app.use('/', protect, adminOnly, queueRoutes);
