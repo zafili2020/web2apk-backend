@@ -367,6 +367,42 @@ async function updateMainActivity(projectDir, appConfig, features, isPremium) {
   await fs.writeFile(mainActivityPath, activity, 'utf8');
 }
 
+// Add AdMob code for FREE users
+  if (!isPremium) {
+    const admobCode = `
+        // Initialize AdMob
+        MobileAds.initialize(this) { }
+        
+        // Load banner ad
+        val adView = findViewById<AdView>(R.id.adView)
+        adView.visibility = View.VISIBLE
+        val adRequest = AdRequest.Builder().build()
+        adView.loadAd(adRequest)
+        
+        // Optional: Interstitial ad every 3 app opens
+        val openCount = getSharedPreferences("app_prefs", MODE_PRIVATE)
+            .getInt("open_count", 0) + 1
+        getSharedPreferences("app_prefs", MODE_PRIVATE)
+            .edit().putInt("open_count", openCount).apply()
+        
+        if (openCount % 3 == 0) {
+            val interstitialAd = InterstitialAd(this)
+            interstitialAd.adUnitId = "ca-app-pub-3940256099942544/1033173712"  // ← YOUR INTERSTITIAL AD ID
+            interstitialAd.loadAd(AdRequest.Builder().build())
+            interstitialAd.adListener = object : AdListener() {
+                override fun onAdLoaded() {
+                    interstitialAd.show()
+                }
+            }
+        }
+    `;
+    
+    activity = activity.replace(
+      'setContentView(R.layout.activity_main)',
+      `setContentView(R.layout.activity_main)\n${admobCode}`
+    );
+  }
+  
 /**
  * Build APK with Gradle
  */
